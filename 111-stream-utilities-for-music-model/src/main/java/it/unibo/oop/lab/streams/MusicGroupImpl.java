@@ -6,8 +6,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 /**
  *
  */
@@ -31,42 +31,67 @@ public final class MusicGroupImpl implements MusicGroup {
 
     @Override
     public Stream<String> orderedSongNames() {
-        return null;
+        return this.songs.stream()
+            .map(Song::getSongName)
+            .sorted(String::compareTo);
     }
 
     @Override
     public Stream<String> albumNames() {
-        return null;
+        return this.albums.keySet().stream();
     }
 
     @Override
     public Stream<String> albumInYear(final int year) {
-        return null;
+        return this.albums.entrySet().stream()
+            .filter((entry) -> entry.getValue().equals(year))
+            .map(Map.Entry::getKey);
     }
 
     @Override
-    public int countSongs(final String albumName) {
-        return -1;
+    public int countSongs(final String albumName) {        
+        return (int) filterByAlbum(albumName)
+            .count();
     }
 
     @Override
     public int countSongsInNoAlbum() {
-        return -1;
+        return (int) this.songs.stream()
+            .filter((song) -> song.getAlbumName().isEmpty())
+            .count();
     }
 
     @Override
     public OptionalDouble averageDurationOfSongs(final String albumName) {
-        return null;
+        return filterByAlbum(albumName)
+            .mapToDouble(Song::getDuration)
+            .average();
     }
 
     @Override
     public Optional<String> longestSong() {
-        return null;
+        return Optional.of(this.songs.stream()
+            .map((song) -> Map.entry(song, song.getDuration()))
+            .max(Map.Entry.comparingByValue(Double::compareTo))
+            .get().getKey().getSongName());
+        /* TODO: utilizzare un Collector per ritornare una mappa 
+        * e poi creare uno Stream su quella mappa (EntrySet)
+        */
     }
 
     @Override
     public Optional<String> longestAlbum() {
+        /*TODO implement */
         return null;
+    }
+
+    /*
+     * Auxiliary method that returns a Stream containing all the songs in the given album
+     */
+    private Stream<Song> filterByAlbum(String albumName) {
+        return this.songs.stream()
+            .filter((song) -> !song.getAlbumName().isEmpty())
+            .filter((song) -> song.getAlbumName().get().equals(albumName));
     }
 
     private static final class Song {

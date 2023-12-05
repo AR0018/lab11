@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.Map.Entry;
-import java.util.stream.Collector;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 /**
@@ -51,7 +51,7 @@ public final class MusicGroupImpl implements MusicGroup {
     }
 
     @Override
-    public int countSongs(final String albumName) {        
+    public int countSongs(final String albumName) { 
         return (int) filterByAlbum(albumName)
             .count();
     }
@@ -72,31 +72,36 @@ public final class MusicGroupImpl implements MusicGroup {
 
     @Override
     public Optional<String> longestSong() {
+        /*  LESS EFFICIENT
         return Optional.of(this.songs.stream()
             .map((song) -> Map.entry(song, song.getDuration()))
             .max(Map.Entry.comparingByValue(Double::compareTo))
-            .get().getKey().getSongName());
-        /* TODO: utilizzare un Collector per ritornare una mappa 
-        * e poi creare uno Stream su quella mappa (EntrySet)
-        
-        /*
-        return this.songs.stream()
-            .collect(Collectors.groupingBy((song) -> song.getDuration()))
+            .get().getKey().getSongName());*/
+        return Optional.of(this.songs.stream()
+            //Creates a Map that associates each Song to its duration
+            .collect(Collectors.toMap(Function.identity(), Song::getDuration))
             .entrySet().stream()
-            .max(Entry.comparingByKey())
-        */
+            .max(Entry.comparingByValue(Double::compareTo))
+            .get().getKey().getSongName());
     }
 
     @Override
     public Optional<String> longestAlbum() {
-        /*TODO implement */
-        return null;
+        return songs.stream()
+            .filter((song) -> song.getAlbumName().isPresent())
+            //Creates a map that associates each album name to its total duration
+            .collect(Collectors.groupingBy(
+                (song) -> song.getAlbumName(),
+                Collectors.mapping(Song::getDuration, Collectors.reducing(Double::sum))))
+            .entrySet().stream()
+            .max(Entry.comparingByValue((dur1, dur2) -> dur1.get().compareTo(dur2.get())))
+            .get().getKey();
     }
 
     /*
      * Auxiliary method that returns a Stream containing all the songs in the given album
      */
-    private Stream<Song> filterByAlbum(String albumName) {
+    private Stream<Song> filterByAlbum(final String albumName) {
         return this.songs.stream()
             .filter((song) -> !song.getAlbumName().isEmpty())
             .filter((song) -> song.getAlbumName().get().equals(albumName));
